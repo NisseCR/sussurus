@@ -214,10 +214,6 @@ function transitionToPlayer(state) {
     .then(() => {
       pendingInitialState = null;
       audioStarted = true;
-
-      // Re-apply listener-local volume after first engine state is active.
-      AudioEngine.setListenerVolume('music', listenerVolumes.music);
-      AudioEngine.setListenerVolume('ambience', listenerVolumes.ambience);
     });
 
   updateNowPlaying(state);
@@ -294,10 +290,6 @@ async function poll() {
         updateNowPlaying(state);
         await ensureAudioReady();
         await enqueueAudioState(state);
-
-        // Keep local master volumes applied after every server update.
-        AudioEngine.setListenerVolume('music', listenerVolumes.music);
-        AudioEngine.setListenerVolume('ambience', listenerVolumes.ambience);
       }
     }
   } catch (err) {
