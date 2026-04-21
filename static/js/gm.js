@@ -123,7 +123,7 @@ async function loadLibrary() {
 
 /**
  * Render the music playlist grid.
- * Each playlist becomes a clickable tile with cover art and name.
+ * Each playlist becomes a clickable tile with cover art only.
  */
 function renderPlaylists() {
   const grid = document.getElementById('playlist-grid');
@@ -152,12 +152,7 @@ function renderPlaylists() {
       img.innerHTML = '<span class="cover-placeholder">♪</span>';
     }
 
-    const label = document.createElement('div');
-    label.className = 'playlist-label';
-    label.textContent = playlist.name;
-
     tile.appendChild(img);
-    tile.appendChild(label);
     tile.addEventListener('click', () => onPlaylistClick(playlist.name));
     grid.appendChild(tile);
   });
