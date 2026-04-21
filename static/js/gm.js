@@ -20,6 +20,7 @@ const gmState = {
 
 let library = { playlists: [], ambience: {} };
 let audioStarted = false;
+let audioReadyPromise = null;
 
 
 // ---------------------------------------------------------------------------
@@ -73,7 +74,7 @@ async function createNewSession() {
   const data = await res.json();
   gmState.sessionCode = data.session_code;
   // Reset local working state
-  gmState.music = { playlist: null, track: null };
+  gmState.music = { playlist: null, track: null, volume: 1.0 };
   gmState.ambience = {};
   updateSessionDisplay();
 }
@@ -90,9 +91,9 @@ function setupSessionDisplay() {
   if (btn) btn.addEventListener('click', async () => {
     if (!confirm('Start a new session? Listeners will need to rejoin.')) return;
     await createNewSession();
-    gmState.music = { playlist: null, track: null };
+    gmState.music = { playlist: null, track: null, volume: 1.0 };
     gmState.ambience = {};
-    AudioEngine.stopAll();
+    await AudioEngine.stopAll();
     renderPlaylists();
     syncSidebar();
   });
@@ -164,7 +165,7 @@ function renderPlaylists() {
  * @param {string} playlistName
  */
 async function onPlaylistClick(playlistName) {
-  ensureAudio();
+  await ensureAudio();
 
   const isActive = gmState.music.playlist === playlistName;
   const newPlaylist = isActive ? null : playlistName;
@@ -248,7 +249,7 @@ function renderAmbiencePanel() {
  * @param {string} filename
  */
 async function onAmbienceClick(key, category, filename) {
-  ensureAudio();
+  await ensureAudio();
 
   const current = gmState.ambience[key];
   const newActive = !current?.active;
@@ -514,12 +515,27 @@ function buildAudioState() {
  * Initialise the Web Audio API on first user interaction (browser requirement).
  * Safe to call multiple times.
  */
-function ensureAudio() {
-  if (!audioStarted) {
-    AudioEngine.init();
-    AudioEngine.loadLibrary();
-    audioStarted = true;
+async function ensureAudio() {
+  if (!audioReadyPromise) {
+    audioReadyPromise = (async () => {
+      if (!audioStarted) {
+        AudioEngine.init();
+        await AudioEngine.loadLibrary();
+        audioStarted = true;
+      }
+    })();
   }
+
+  await audioReadyPromise;
+}
+
+/**
+ * Initialise the Web Audio API and immediately sync the current state.
+ * Safe to call multiple times.
+ */
+async function ensureAudioAndSync() {
+  await ensureAudio();
+  await AudioEngine.applyState(buildAudioState());
 }
 
 // Bind track change events to update sidebar label

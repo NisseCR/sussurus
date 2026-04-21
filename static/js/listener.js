@@ -21,6 +21,15 @@ let audioStarted = false;
 /** Whether polling is currently active. */
 let pollingActive = false;
 
+/** Serialized audio update chain so rapid pushes cannot overlap. */
+let audioUpdateQueue = Promise.resolve();
+
+/** The initial state captured during join/startup, if any. */
+let pendingInitialState = null;
+
+/** Whether the listener has already requested audio readiness. */
+let audioReadyPromise = null;
+
 
 // ---------------------------------------------------------------------------
 // Initialisation
@@ -90,15 +99,49 @@ function transitionToPlayer(state) {
   document.getElementById('join-screen').style.display = 'none';
   document.getElementById('player-screen').style.display = 'flex';
 
-  // Start audio (this IS the user gesture since it comes from the form submit chain)
+  pendingInitialState = state;
   AudioEngine.init();
-  AudioEngine.loadLibrary().then(() => {
-    AudioEngine.applyState(state);
-    audioStarted = true;
-  });
+  ensureAudioReady()
+    .then(() => {
+      if (pendingInitialState) {
+        return enqueueAudioState(pendingInitialState);
+      }
+    })
+    .then(() => {
+      pendingInitialState = null;
+      audioStarted = true;
+    });
 
   updateNowPlaying(state);
   startPolling();
+}
+
+/**
+ * Ensure the listener audio engine is ready before any playback is applied.
+ * @returns {Promise<void>}
+ */
+async function ensureAudioReady() {
+  if (!audioReadyPromise) {
+    audioReadyPromise = (async () => {
+      if (!audioStarted) {
+        await AudioEngine.loadLibrary();
+      }
+    })();
+  }
+
+  await audioReadyPromise;
+}
+
+/**
+ * Queue a state application so updates cannot race each other.
+ * @param {Object} state
+ * @returns {Promise<void>}
+ */
+function enqueueAudioState(state) {
+  audioUpdateQueue = audioUpdateQueue
+    .then(() => AudioEngine.applyState(state))
+    .catch(() => {});
+  return audioUpdateQueue;
 }
 
 
@@ -140,8 +183,9 @@ async function poll() {
 
       if (state.updated_at > lastUpdatedAt) {
         lastUpdatedAt = state.updated_at;
-        if (audioStarted) AudioEngine.applyState(state);
         updateNowPlaying(state);
+        await ensureAudioReady();
+        await enqueueAudioState(state);
       }
     }
   } catch (err) {

@@ -7,6 +7,7 @@
  *
  * Public API:
  *   AudioEngine.init()
+ *   AudioEngine.loadLibrary()
  *   AudioEngine.applyState(state)   ← main entry point, call on every state update
  *   AudioEngine.setMusicVolume(v)
  *   AudioEngine.setAmbienceVolume(key, v)
@@ -21,6 +22,12 @@ const AudioEngine = (() => {
 
   /** @type {AudioContext|null} */
   let ctx = null;
+
+  /** Promise that resolves once the shared audio library metadata has loaded. */
+  let libraryPromise = null;
+
+  /** Serialized state application chain to prevent overlapping state races. */
+  let applyQueue = Promise.resolve();
 
   /**
    * Music channel: one GainNode per "slot" so we can crossfade.
@@ -63,11 +70,31 @@ const AudioEngine = (() => {
 
   /**
    * Load the audio library metadata from the server.
+   * Subsequent callers share the same in-flight request.
    * @returns {Promise<void>}
    */
   async function loadLibrary() {
-    const res = await fetch('/api/audio/library');
-    library = await res.json();
+    if (libraryPromise) return libraryPromise;
+
+    libraryPromise = (async () => {
+      const res = await fetch('/api/audio/library');
+      library = await res.json();
+    })();
+
+    try {
+      await libraryPromise;
+    } finally {
+      libraryPromise = null;
+    }
+  }
+
+  /**
+   * Ensure the library metadata is loaded before any playback attempt.
+   * @returns {Promise<void>}
+   */
+  async function ensureReady() {
+    if (!ctx) return;
+    await loadLibrary();
   }
 
 
@@ -273,13 +300,22 @@ const AudioEngine = (() => {
 
   /**
    * Apply a full state snapshot from the server.
-   * Called both by the GM page (on every local change) and by the listener page
-   * (on every long-poll response).
+   * Calls are serialized so rapid updates cannot race each other.
    *
    * @param {Object} state - The JSON state object from the server.
    */
-  async function applyState(state) {
+  function applyState(state) {
+    applyQueue = applyQueue.then(() => applyStateInternal(state));
+    return applyQueue;
+  }
+
+  /**
+   * Internal state application implementation.
+   * @param {Object} state
+   */
+  async function applyStateInternal(state) {
     if (!ctx) return;
+    await ensureReady();
 
     // Update fade durations (convert ms → seconds)
     if (state.fade) {
@@ -292,22 +328,24 @@ const AudioEngine = (() => {
     const desiredVolume   = state.music?.volume   ?? 1.0;
 
     if (desiredPlaylist !== music.playlist) {
-      // Playlist changed (or stopped) — full fade out/in
-      switchPlaylist(desiredPlaylist, state.music?.track ?? null, desiredVolume);
+      await switchPlaylist(desiredPlaylist, state.music?.track ?? null, desiredVolume);
     } else if (music.gain) {
       // Same playlist still playing — just ramp volume if it changed
       rampVolume(music.gain, desiredVolume);
       music.targetVolume = desiredVolume;
+    } else if (desiredPlaylist) {
+      // Recovery path: playlist should be playing, but no active node exists yet.
+      await switchPlaylist(desiredPlaylist, state.music?.track ?? null, desiredVolume);
     }
 
     // --- Ambience ---
     const desiredAmbience = state.ambience ?? {};
 
     // Stop layers that are no longer active
-    for (const [key, layer] of ambienceLayers) {
+    for (const [key] of ambienceLayers) {
       const desired = desiredAmbience[key];
       if (!desired || !desired.active) {
-        stopAmbienceLayer(key);
+        await stopAmbienceLayer(key);
       }
     }
 
@@ -321,7 +359,7 @@ const AudioEngine = (() => {
         ambienceLayers.get(key).targetVolume = layerState.volume;
       } else {
         // New layer — start and fade in
-        startAmbienceLayer(key, layerState.volume);
+        await startAmbienceLayer(key, layerState.volume);
       }
     }
   }
