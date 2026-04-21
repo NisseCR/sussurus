@@ -169,10 +169,14 @@ async function onPlaylistClick(playlistName) {
 
   const isActive = gmState.music.playlist === playlistName;
   const newPlaylist = isActive ? null : playlistName;
-  const newTrack    = isActive ? null : (library.playlists.find(p => p.name === playlistName)?.tracks[0] ?? null);
-  const newVolume   = isActive ? 1.0  : (gmState.music.volume ?? 1.0);
+  const newTrack = isActive ? null : (library.playlists.find(p => p.name === playlistName)?.tracks[0] ?? null);
+  const newVolume = isActive ? 1.0 : (gmState.music.volume ?? 1.0);
 
   gmState.music = { playlist: newPlaylist, track: newTrack, volume: newVolume };
+
+  // Update UI immediately so the page feels responsive
+  renderPlaylists();
+  syncSidebar();
 
   // Update server state
   await fetch('/api/music', {
@@ -181,12 +185,10 @@ async function onPlaylistClick(playlistName) {
     body: JSON.stringify({ playlist: newPlaylist, track: newTrack, volume: newVolume }),
   });
 
-  // Apply to local audio
-  await AudioEngine.applyState(buildAudioState());
-
-  // Update UI
-  renderPlaylists();
-  syncSidebar();
+  // Apply to local audio in the background
+  AudioEngine.applyState(buildAudioState()).catch(err => {
+    console.error('Failed to apply music state:', err);
+  });
 }
 
 
@@ -257,19 +259,20 @@ async function onAmbienceClick(key, category, filename) {
 
   gmState.ambience[key] = { active: newActive, volume };
 
+  // Update UI immediately
+  const tile = document.querySelector(`.ambience-tile[data-key="${key}"]`);
+  if (tile) tile.classList.toggle('active', newActive);
+  syncSidebar();
+
   await fetch('/api/ambience', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ key, active: newActive, volume }),
   });
 
-  await AudioEngine.applyState(buildAudioState());
-
-  // Update ambience tile visual
-  const tile = document.querySelector(`.ambience-tile[data-key="${key}"]`);
-  if (tile) tile.classList.toggle('active', newActive);
-
-  syncSidebar();
+  AudioEngine.applyState(buildAudioState()).catch(err => {
+    console.error('Failed to apply ambience state:', err);
+  });
 }
 
 
@@ -392,7 +395,9 @@ function renderSidebarMusic() {
 
   const slider = document.createElement('input');
   slider.type = 'range';
-  slider.min = 0; slider.max = 1; slider.step = 0.01;
+  slider.min = 0;
+  slider.max = 1;
+  slider.step = 0.01;
   slider.value = gmState.music.volume ?? 1.0;   // restore persisted volume on reload
   slider.className = 'sidebar-slider';
   slider.addEventListener('input', async () => {
@@ -413,14 +418,20 @@ function renderSidebarMusic() {
   stopBtn.textContent = '✕';
   stopBtn.addEventListener('click', async () => {
     gmState.music = { playlist: null, track: null, volume: 1.0 };
+
+    // Update UI immediately
+    renderPlaylists();
+    syncSidebar();
+
     await fetch('/api/music', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ playlist: null, track: null, volume: 1.0 }),
     });
-    await AudioEngine.applyState(buildAudioState());
-    renderPlaylists();
-    syncSidebar();
+
+    AudioEngine.applyState(buildAudioState()).catch(err => {
+      console.error('Failed to stop music:', err);
+    });
   });
 
   row.appendChild(label);
@@ -454,7 +465,9 @@ function renderSidebarAmbience() {
 
     const slider = document.createElement('input');
     slider.type = 'range';
-    slider.min = 0; slider.max = 1; slider.step = 0.01;
+    slider.min = 0;
+    slider.max = 1;
+    slider.step = 0.01;
     slider.value = layerState.volume;
     slider.className = 'sidebar-slider';
     slider.addEventListener('input', async () => {
@@ -475,16 +488,21 @@ function renderSidebarAmbience() {
     stopBtn.textContent = '✕';
     stopBtn.addEventListener('click', async () => {
       gmState.ambience[key].active = false;
+
+      // Update UI immediately
+      const tile = document.querySelector(`.ambience-tile[data-key="${key}"]`);
+      if (tile) tile.classList.remove('active');
+      syncSidebar();
+
       await fetch('/api/ambience', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key, active: false, volume: gmState.ambience[key].volume }),
       });
-      await AudioEngine.applyState(buildAudioState());
-      // Update the ambience tile
-      const tile = document.querySelector(`.ambience-tile[data-key="${key}"]`);
-      if (tile) tile.classList.remove('active');
-      syncSidebar();
+
+      AudioEngine.applyState(buildAudioState()).catch(err => {
+        console.error('Failed to stop ambience:', err);
+      });
     });
 
     row.appendChild(label);
@@ -527,15 +545,6 @@ async function ensureAudio() {
   }
 
   await audioReadyPromise;
-}
-
-/**
- * Initialise the Web Audio API and immediately sync the current state.
- * Safe to call multiple times.
- */
-async function ensureAudioAndSync() {
-  await ensureAudio();
-  await AudioEngine.applyState(buildAudioState());
 }
 
 // Bind track change events to update sidebar label
