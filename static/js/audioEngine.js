@@ -31,7 +31,7 @@ const AudioEngine = (() => {
 
   /**
    * Music channel: one GainNode per "slot" so we can crossfade.
-   * @type {{ source: AudioBufferSourceNode|null, gain: GainNode|null, playlist: string|null, trackIndex: number }}
+   * @type {{ source: AudioBufferSourceNode|null, gain: GainNode|null, playlist: string|null, trackIndex: number, targetVolume: number }}
    */
   const music = { source: null, gain: null, playlist: null, trackIndex: 0, targetVolume: 1.0 };
 
@@ -49,6 +49,24 @@ const AudioEngine = (() => {
 
   /** Library snapshot: playlists & tracks loaded on init. */
   let library = { playlists: [], ambience: {} };
+
+  /** Small tolerance for comparing volume values. */
+  const VOLUME_EPSILON = 0.0005;
+
+
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Compare two volumes with a small tolerance to avoid pointless re-ramping.
+   * @param {number} a
+   * @param {number} b
+   * @returns {boolean}
+   */
+  function nearlyEqual(a, b) {
+    return Math.abs((a ?? 0) - (b ?? 0)) <= VOLUME_EPSILON;
+  }
 
 
   // ---------------------------------------------------------------------------
@@ -335,9 +353,11 @@ const AudioEngine = (() => {
     if (desiredPlaylist !== music.playlist) {
       await switchPlaylist(desiredPlaylist, state.music?.track ?? null, desiredVolume, desiredOrder);
     } else if (music.gain) {
-      // Same playlist still playing — just ramp volume if it changed
-      rampVolume(music.gain, desiredVolume);
-      music.targetVolume = desiredVolume;
+      // Same playlist still playing — only ramp if the requested volume changed
+      if (!nearlyEqual(music.targetVolume, desiredVolume)) {
+        rampVolume(music.gain, desiredVolume);
+        music.targetVolume = desiredVolume;
+      }
     } else if (desiredPlaylist) {
       // Recovery path: playlist should be playing, but no active node exists yet.
       await switchPlaylist(desiredPlaylist, state.music?.track ?? null, desiredVolume, desiredOrder);
@@ -359,9 +379,12 @@ const AudioEngine = (() => {
       if (!layerState.active) continue;
 
       if (ambienceLayers.has(key)) {
-        // Already playing — just update volume
-        rampVolume(ambienceLayers.get(key).gain, layerState.volume);
-        ambienceLayers.get(key).targetVolume = layerState.volume;
+        // Already playing — only ramp if the requested volume changed
+        const layer = ambienceLayers.get(key);
+        if (!nearlyEqual(layer.targetVolume, layerState.volume)) {
+          rampVolume(layer.gain, layerState.volume);
+          layer.targetVolume = layerState.volume;
+        }
       } else {
         // New layer — start and fade in
         await startAmbienceLayer(key, layerState.volume);

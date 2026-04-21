@@ -12,6 +12,7 @@ import time
 import secrets
 import random
 
+from api.config import load_audio_config
 from api.models import (
     AmbienceLayerState,
     FadeConfig,
@@ -20,11 +21,19 @@ from api.models import (
 )
 
 
+_CONFIG = load_audio_config()
+
+
 # ---------------------------------------------------------------------------
 # Module-level singleton
 # ---------------------------------------------------------------------------
 
-_state: SessionState = SessionState()
+_state: SessionState = SessionState(
+    fade=FadeConfig(
+        music_ms=_CONFIG["fade"]["music_ms"],
+        ambience_ms=_CONFIG["fade"]["ambience_ms"],
+    )
+)
 
 
 # ---------------------------------------------------------------------------
@@ -47,7 +56,14 @@ def reset_session() -> str:
     """
     global _state
     code = secrets.token_hex(3).upper()  # e.g. "A3F9C1"
-    _state = SessionState(session_code=code, updated_at=time.time())
+    _state = SessionState(
+        session_code=code,
+        updated_at=time.time(),
+        fade=FadeConfig(
+            music_ms=_CONFIG["fade"]["music_ms"],
+            ambience_ms=_CONFIG["fade"]["ambience_ms"],
+        ),
+    )
     return code
 
 
