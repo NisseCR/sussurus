@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sussurus - GM</title>
+  <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/gm.css" />
+</head>
+<body>
+
+  <!-- Background artwork (darkened via CSS opacity) -->
+  <div class="bg-art"></div>
+
+  <div class="gm-layout">
+
+    <!-- ── Header ────────────────────────────────────────────── -->
+    <header class="gm-header">
+      <div class="header-left">
+        <span class="header-title">Sussurus</span>
+        <span class="header-subtitle">Game Master</span>
+      </div>
+
+      <div class="session-block">
+        <span class="session-label">Session</span>
+        <span class="session-code" id="session-code">------</span>
+        <button class="btn-new-session" id="btn-new-session">New Session</button>
+      </div>
+    </header>
+
+    <!-- ── Main mixing area ───────────────────────────────────── -->
+    <main class="gm-main">
+
+      <!-- Music playlists -->
+      <section>
+        <div class="section-header">
+          <h2>Music</h2>
+          <div class="section-divider"></div>
+        </div>
+        <div class="playlist-grid" id="playlist-grid">
+          <p class="empty-hint">Loading library…</p>
+        </div>
+      </section>
+
+      <!-- Ambience sounds -->
+      <section>
+        <div class="section-header">
+          <h2>Ambience</h2>
+          <div class="section-divider"></div>
+        </div>
+        <div id="ambience-panel"></div>
+      </section>
+
+      <!-- Fade durations -->
+      <section>
+        <div class="section-header">
+          <h2>Fade Durations</h2>
+          <div class="section-divider"></div>
+        </div>
+        <div class="fade-controls">
+          <div class="fade-field">
+            <label for="fade-music">Music</label>
+            <input type="number" id="fade-music" min="0" step="0.5" value="5" />
+            <span class="unit">sec</span>
+          </div>
+          <div class="fade-field">
+            <label for="fade-ambience">Ambience</label>
+            <input type="number" id="fade-ambience" min="0" step="0.5" value="10" />
+            <span class="unit">sec</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Push to listeners -->
+      <section>
+        <div class="push-bar">
+          <button class="btn-push" id="btn-push">Push to Listeners</button>
+          <span class="push-feedback" id="push-feedback"></span>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ── Sidebar: active audio ─────────────────────────────── -->
+    <aside class="gm-sidebar">
+      <div class="sidebar-header">
+        <h2>Active Audio</h2>
+      </div>
+
+      <!-- Music row -->
+      <div class="sidebar-section">
+        <h3>Music</h3>
+        <div id="sidebar-music">
+          <p class="sidebar-empty">No music playing</p>
+        </div>
+      </div>
+
+      <!-- Ambience rows -->
+      <div class="sidebar-section sidebar-ambience-section">
+        <h3>Ambience</h3>
+        <div id="sidebar-ambience">
+          <p class="sidebar-empty">No ambience active</p>
+        </div>
+      </div>
+    </aside>
+
+  </div><!-- /.gm-layout -->
+
+  <script src="/static/js/audioEngine.js"></script>
+  <script src="/static/js/gm.js"></script>
+</body>
+</html>

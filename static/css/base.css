@@ -1,0 +1,135 @@
+/* base.css — shared design tokens and reset */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&display=swap');
+
+/* ---------------------------------------------------------------------------
+   Design tokens
+   --------------------------------------------------------------------------- */
+:root {
+  /* Background */
+  --bg-image-opacity: 0.18;
+
+  /* Surface layers */
+  --surface-deep:    rgba(6, 4, 10, 0.88);
+  --surface-mid:     rgba(14, 10, 22, 0.82);
+  --surface-raised:  rgba(22, 16, 36, 0.78);
+  --surface-hover:   rgba(36, 26, 56, 0.85);
+
+  /* Borders */
+  --border-dim:      rgba(120, 90, 160, 0.18);
+  --border-subtle:   rgba(160, 120, 200, 0.28);
+  --border-active:   rgba(200, 160, 255, 0.55);
+
+  /* Text */
+  --text-primary:    #e8dff5;
+  --text-secondary:  #a090b8;
+  --text-muted:      #6a5a80;
+  --text-accent:     #c9a96e;   /* warm gold */
+
+  /* Accent colours */
+  --accent-gold:     #c9a96e;
+  --accent-gold-dim: rgba(201, 169, 110, 0.35);
+  --accent-violet:   #8b5cf6;
+  --accent-violet-dim: rgba(139, 92, 246, 0.25);
+  --active-glow:     0 0 18px rgba(139, 92, 246, 0.4), 0 0 40px rgba(201, 169, 110, 0.15);
+
+  /* Fonts */
+  --font-display:    'Cinzel', serif;
+  --font-body:       'Crimson Pro', Georgia, serif;
+
+  /* Spacing & shape */
+  --radius-sm:  4px;
+  --radius-md:  8px;
+  --radius-lg:  14px;
+  --gap-sm:     8px;
+  --gap-md:     16px;
+  --gap-lg:     28px;
+
+  /* Sidebar */
+  --sidebar-width: 280px;
+
+  /* Transitions */
+  --transition-fast:   0.15s ease;
+  --transition-normal: 0.3s ease;
+}
+
+/* ---------------------------------------------------------------------------
+   Reset & base
+   --------------------------------------------------------------------------- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: var(--text-primary);
+  background: #07050d;
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------------------
+   Background art
+   --------------------------------------------------------------------------- */
+.bg-art {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-image: url('/static/img/background.jpg');
+  background-size: cover;
+  background-position: center;
+  opacity: var(--bg-image-opacity);
+  pointer-events: none;
+}
+
+/* Deep vignette over the art */
+.bg-art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 20%, rgba(4, 2, 8, 0.85) 100%);
+}
+
+/* ---------------------------------------------------------------------------
+   Typography
+   --------------------------------------------------------------------------- */
+h1, h2, h3 {
+  font-family: var(--font-display);
+  letter-spacing: 0.06em;
+  font-weight: 400;
+}
+
+h1 { font-size: 1.5rem; color: var(--text-accent); }
+h2 { font-size: 1.1rem; color: var(--text-secondary); letter-spacing: 0.12em; text-transform: uppercase; }
+h3 { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em; }
+
+/* ---------------------------------------------------------------------------
+   Scrollbars
+   --------------------------------------------------------------------------- */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 2px; }
+
+/* ---------------------------------------------------------------------------
+   Common button base
+   --------------------------------------------------------------------------- */
+button {
+  font-family: var(--font-display);
+  cursor: pointer;
+  border: none;
+  outline: none;
+  transition: var(--transition-fast);
+}
+
+/* ---------------------------------------------------------------------------
+   Utility
+   --------------------------------------------------------------------------- */
+.empty-hint {
+  font-style: italic;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  padding: var(--gap-md);
+}

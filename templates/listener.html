@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sussurus - Listen</title>
+  <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/listener.css" />
+</head>
+<body>
+
+  <!-- Background artwork -->
+  <div class="bg-art"></div>
+
+  <div class="listener-layout">
+
+    <!-- ── Join screen ──────────────────────────────────────── -->
+    <div class="join-screen" id="join-screen">
+      <h1 class="join-title">Sussurus</h1>
+      <p class="join-subtitle">Enter the session code from your GM</p>
+
+      <form class="join-form" id="join-form">
+        <div class="code-input-wrap">
+          <input
+            class="code-input"
+            id="code-input"
+            type="text"
+            maxlength="6"
+            autocomplete="off"
+            autocorrect="off"
+            spellcheck="false"
+            placeholder="A1B2C3"
+            required
+          />
+          <button class="btn-join" type="submit">Join</button>
+        </div>
+        <p class="join-error" id="join-error"></p>
+      </form>
+    </div>
+
+    <!-- ── Player screen ────────────────────────────────────── -->
+    <div class="player-screen" id="player-screen">
+      <h1 class="player-title">Now Playing</h1>
+
+      <div class="now-playing-card">
+        <div class="now-playing-row">
+          <span class="now-playing-row-label">Music</span>
+          <span class="now-playing-music" id="now-playing-music">—</span>
+        </div>
+        <div class="now-playing-row">
+          <span class="now-playing-row-label">Ambience</span>
+          <span class="now-playing-ambience" id="now-playing-ambience">—</span>
+        </div>
+      </div>
+
+      <div class="listening-indicator">
+        <div class="pulse-dot"></div>
+        Listening for updates...
+      </div>
+    </div>
+
+  </div><!-- /.listener-layout -->
+
+  <script src="/static/js/audioEngine.js"></script>
+  <script src="/static/js/listener.js"></script>
+</body>
+</html>

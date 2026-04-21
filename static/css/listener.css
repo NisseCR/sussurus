@@ -1,0 +1,204 @@
+/* listener.css — styles for the listener page */
+
+/* ---------------------------------------------------------------------------
+   Listener layout: full viewport, centred content
+   --------------------------------------------------------------------------- */
+.listener-layout {
+  position: relative;
+  z-index: 1;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------------------------------------------------------------------------
+   Join screen
+   --------------------------------------------------------------------------- */
+.join-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap-lg);
+  text-align: center;
+  padding: var(--gap-lg);
+  max-width: 380px;
+  width: 100%;
+}
+
+.join-title {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  color: var(--text-accent);
+  letter-spacing: 0.1em;
+}
+
+.join-subtitle {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: -12px;
+}
+
+.join-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap-md);
+  width: 100%;
+}
+
+.code-input-wrap {
+  display: flex;
+  gap: var(--gap-sm);
+  width: 100%;
+}
+
+.code-input {
+  flex: 1;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 10px;
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.code-input:focus {
+  border-color: var(--accent-gold-dim);
+  box-shadow: 0 0 12px rgba(201, 169, 110, 0.15);
+}
+
+.btn-join {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 10px 24px;
+  background: linear-gradient(135deg, rgba(201, 169, 110, 0.15), rgba(139, 92, 246, 0.1));
+  border: 1px solid var(--accent-gold-dim);
+  color: var(--text-accent);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  transition: all var(--transition-normal);
+}
+
+.btn-join:hover:not(:disabled) {
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 14px rgba(201, 169, 110, 0.2);
+}
+
+.btn-join:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.join-error {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: #d07070;
+  font-style: italic;
+  min-height: 1.2em;
+}
+
+/* ---------------------------------------------------------------------------
+   Player screen
+   --------------------------------------------------------------------------- */
+.player-screen {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap-lg);
+  padding: var(--gap-lg);
+  text-align: center;
+  max-width: 480px;
+  width: 100%;
+}
+
+.player-title {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--text-accent);
+  letter-spacing: 0.12em;
+}
+
+.now-playing-card {
+  width: 100%;
+  background: var(--surface-mid);
+  border: 1px solid var(--border-dim);
+  border-radius: var(--radius-lg);
+  padding: var(--gap-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+}
+
+.now-playing-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.now-playing-row-label {
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.now-playing-music {
+  font-family: var(--font-body);
+  font-size: 1.15rem;
+  font-style: italic;
+  color: var(--text-primary);
+}
+
+.now-playing-ambience {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  line-height: 1.6;
+}
+
+/* Subtle pulsing "listening" indicator */
+.listening-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-violet);
+  animation: pulse-glow 2.4s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.3; box-shadow: none; }
+  50%       { opacity: 1;   box-shadow: 0 0 10px var(--accent-violet); }
+}
+
+/* Disconnect notice */
+.disconnect-notice {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-style: italic;
+  color: #d07070;
+  margin-top: var(--gap-md);
+}
