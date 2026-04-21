@@ -176,12 +176,14 @@ const AudioEngine = (() => {
    * @param {string} playlistName
    * @param {number} trackIndex - Index into the playlist's track array.
    * @param {GainNode} gainNode - Pre-created gain node (already connected to destination).
+   * @param {list<string>|null} trackOrder - Optional explicit playback order.
    */
-  async function startTrack(playlistName, trackIndex, gainNode) {
+  async function startTrack(playlistName, trackIndex, gainNode, trackOrder = null) {
     const playlist = library.playlists.find(p => p.name === playlistName);
     if (!playlist || !playlist.tracks.length) return;
 
-    const track = playlist.tracks[trackIndex % playlist.tracks.length];
+    const order = trackOrder?.length ? trackOrder : playlist.tracks;
+    const track = order[trackIndex % order.length];
     const url = `/audio/music/${playlistName}/${track}`;
 
     const buffer = await loadBuffer(url);
@@ -192,13 +194,13 @@ const AudioEngine = (() => {
 
     music.source = source;
     music.playlist = playlistName;
-    music.trackIndex = trackIndex % playlist.tracks.length;
+    music.trackIndex = trackIndex % order.length;
 
     // When this track ends, advance to the next one (if playlist unchanged)
     source.onended = () => {
       if (music.playlist === playlistName && music.source === source) {
-        const nextIndex = (music.trackIndex + 1) % playlist.tracks.length;
-        startTrack(playlistName, nextIndex, gainNode);
+        const nextIndex = (music.trackIndex + 1) % order.length;
+        startTrack(playlistName, nextIndex, gainNode, order);
       }
     };
 
@@ -213,8 +215,10 @@ const AudioEngine = (() => {
    * Fades out the current music, then fades in the new playlist.
    * @param {string|null} playlistName
    * @param {string|null} trackHint - Specific track filename to start (optional).
+   * @param {number} targetVolume
+   * @param {list<string>|null} trackOrder
    */
-  async function switchPlaylist(playlistName, trackHint = null, targetVolume = 1.0) {
+  async function switchPlaylist(playlistName, trackHint = null, targetVolume = 1.0, trackOrder = null) {
     const fadeDur = fade.music;
 
     // Fade out existing music
@@ -239,15 +243,15 @@ const AudioEngine = (() => {
 
     // Determine starting track index
     let trackIndex = 0;
+    const playlist = library.playlists.find(p => p.name === playlistName);
+    const order = trackOrder?.length ? trackOrder : (playlist?.tracks ?? []);
+
     if (trackHint) {
-      const playlist = library.playlists.find(p => p.name === playlistName);
-      if (playlist) {
-        const idx = playlist.tracks.indexOf(trackHint);
-        if (idx >= 0) trackIndex = idx;
-      }
+      const idx = order.indexOf(trackHint);
+      if (idx >= 0) trackIndex = idx;
     }
 
-    await startTrack(playlistName, trackIndex, gainNode);
+    await startTrack(playlistName, trackIndex, gainNode, order);
     fadeIn(gainNode, targetVolume, fadeDur);
   }
 
@@ -325,17 +329,18 @@ const AudioEngine = (() => {
 
     // --- Music ---
     const desiredPlaylist = state.music?.playlist ?? null;
-    const desiredVolume   = state.music?.volume   ?? 1.0;
+    const desiredVolume = state.music?.volume ?? 1.0;
+    const desiredOrder = state.music?.track_order ?? [];
 
     if (desiredPlaylist !== music.playlist) {
-      await switchPlaylist(desiredPlaylist, state.music?.track ?? null, desiredVolume);
+      await switchPlaylist(desiredPlaylist, state.music?.track ?? null, desiredVolume, desiredOrder);
     } else if (music.gain) {
       // Same playlist still playing — just ramp volume if it changed
       rampVolume(music.gain, desiredVolume);
       music.targetVolume = desiredVolume;
     } else if (desiredPlaylist) {
       // Recovery path: playlist should be playing, but no active node exists yet.
-      await switchPlaylist(desiredPlaylist, state.music?.track ?? null, desiredVolume);
+      await switchPlaylist(desiredPlaylist, state.music?.track ?? null, desiredVolume, desiredOrder);
     }
 
     // --- Ambience ---

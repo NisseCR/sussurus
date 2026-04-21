@@ -10,6 +10,7 @@ All request and response bodies are typed with Pydantic models from models.py.
 from fastapi import APIRouter
 
 from api import session_state
+from api.audio_scanner import scan_library
 from api.models import (
     AmbienceResponse,
     FadeResponse,
@@ -28,9 +29,31 @@ router = APIRouter(prefix="/api")
 def set_music(req: SetMusicRequest) -> MusicResponse:
     """
     Update the active music playlist and optionally specify the starting track.
-    Pass playlist=null to stop all music.
+    If a track order is provided, it is stored as the authoritative order for
+    the session so the GM and listeners stay in sync.
     """
-    session_state.update_music(req.playlist, req.track, req.volume)
+    session_state.update_music(req.playlist, req.track, req.track_order, req.volume)
+    return MusicResponse(ok=True, music=session_state.get_state().music)
+
+
+@router.post("/music/shuffle", response_model=MusicResponse)
+def shuffle_music_playlist(req: SetMusicRequest) -> MusicResponse:
+    """
+    Shuffle the selected playlist server-side and store the resulting order in state.
+    """
+    if not req.playlist:
+        session_state.update_music(None, None, [], req.volume)
+        return MusicResponse(ok=True, music=session_state.get_state().music)
+
+    library = scan_library()
+    playlist = next((p for p in library.playlists if p.name == req.playlist), None)
+    if not playlist:
+        session_state.update_music(None, None, [], req.volume)
+        return MusicResponse(ok=True, music=session_state.get_state().music)
+
+    shuffled = session_state.shuffle_playlist_tracks(playlist.tracks)
+    first_track = shuffled[0] if shuffled else None
+    session_state.update_music(req.playlist, first_track, shuffled, req.volume)
     return MusicResponse(ok=True, music=session_state.get_state().music)
 
 

@@ -10,6 +10,7 @@ every mutation is validated and the shape is always guaranteed to be correct.
 
 import time
 import secrets
+import random
 
 from api.models import (
     AmbienceLayerState,
@@ -50,9 +51,26 @@ def reset_session() -> str:
     return code
 
 
-def update_music(playlist: str | None, track: str | None, volume: float = 1.0) -> None:
+def update_music(
+    playlist: str | None,
+    track: str | None,
+    track_order: list[str] | None = None,
+    volume: float = 1.0,
+) -> None:
     """Replace the music channel state with new values."""
-    _state.music = MusicState(playlist=playlist, track=track, volume=volume)
+    _state.music = MusicState(
+        playlist=playlist,
+        track=track,
+        track_order=track_order or [],
+        volume=volume,
+    )
+
+
+def shuffle_playlist_tracks(tracks: list[str]) -> list[str]:
+    """Return a shuffled copy of the given track list."""
+    shuffled = tracks[:]
+    random.shuffle(shuffled)
+    return shuffled
 
 
 def update_ambience(key: str, active: bool, volume: float) -> None:

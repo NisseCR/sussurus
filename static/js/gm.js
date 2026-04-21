@@ -13,7 +13,7 @@
 /** Working state mirroring the server's session state. */
 const gmState = {
   sessionCode: null,
-  music: { playlist: null, track: null, volume: 1.0 },
+  music: { playlist: null, track: null, track_order: [], volume: 1.0 },
   ambience: {},
   fade: { music_ms: 5000, ambience_ms: 10000 },
 };
@@ -57,7 +57,11 @@ async function loadOrCreateSession() {
 
   if (state.session_code) {
     gmState.sessionCode = state.session_code;
-    gmState.music = { ...state.music, volume: state.music?.volume ?? 1.0 };
+    gmState.music = {
+      ...state.music,
+      track_order: state.music?.track_order ?? [],
+      volume: state.music?.volume ?? 1.0,
+    };
     gmState.ambience = state.ambience;
     gmState.fade = state.fade;
   } else {
@@ -74,7 +78,7 @@ async function createNewSession() {
   const data = await res.json();
   gmState.sessionCode = data.session_code;
   // Reset local working state
-  gmState.music = { playlist: null, track: null, volume: 1.0 };
+  gmState.music = { playlist: null, track: null, track_order: [], volume: 1.0 };
   gmState.ambience = {};
   updateSessionDisplay();
 }
@@ -91,7 +95,7 @@ function setupSessionDisplay() {
   if (btn) btn.addEventListener('click', async () => {
     if (!confirm('Start a new session? Listeners will need to rejoin.')) return;
     await createNewSession();
-    gmState.music = { playlist: null, track: null, volume: 1.0 };
+    gmState.music = { playlist: null, track: null, track_order: [], volume: 1.0 };
     gmState.ambience = {};
     await AudioEngine.stopAll();
     renderPlaylists();
@@ -169,21 +173,29 @@ async function onPlaylistClick(playlistName) {
 
   const isActive = gmState.music.playlist === playlistName;
   const newPlaylist = isActive ? null : playlistName;
-  const newTrack = isActive ? null : (library.playlists.find(p => p.name === playlistName)?.tracks[0] ?? null);
   const newVolume = isActive ? 1.0 : (gmState.music.volume ?? 1.0);
 
-  gmState.music = { playlist: newPlaylist, track: newTrack, volume: newVolume };
+  if (isActive) {
+    gmState.music = { playlist: null, track: null, track_order: [], volume: 1.0 };
+  } else {
+    const res = await fetch('/api/music/shuffle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        playlist: newPlaylist,
+        track: null,
+        track_order: [],
+        volume: newVolume,
+      }),
+    });
+
+    const data = await res.json();
+    gmState.music = data.music;
+  }
 
   // Update UI immediately so the page feels responsive
   renderPlaylists();
   syncSidebar();
-
-  // Update server state
-  await fetch('/api/music', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ playlist: newPlaylist, track: newTrack, volume: newVolume }),
-  });
 
   // Apply to local audio in the background
   AudioEngine.applyState(buildAudioState()).catch(err => {
@@ -408,7 +420,12 @@ function renderSidebarMusic() {
     await fetch('/api/music', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ playlist: gmState.music.playlist, track: gmState.music.track, volume: v }),
+      body: JSON.stringify({
+        playlist: gmState.music.playlist,
+        track: gmState.music.track,
+        track_order: gmState.music.track_order ?? [],
+        volume: v,
+      }),
     });
   });
 
@@ -417,7 +434,7 @@ function renderSidebarMusic() {
   stopBtn.title = 'Stop music';
   stopBtn.textContent = '✕';
   stopBtn.addEventListener('click', async () => {
-    gmState.music = { playlist: null, track: null, volume: 1.0 };
+    gmState.music = { playlist: null, track: null, track_order: [], volume: 1.0 };
 
     // Update UI immediately
     renderPlaylists();
@@ -426,7 +443,7 @@ function renderSidebarMusic() {
     await fetch('/api/music', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ playlist: null, track: null, volume: 1.0 }),
+      body: JSON.stringify({ playlist: null, track: null, track_order: [], volume: 1.0 }),
     });
 
     AudioEngine.applyState(buildAudioState()).catch(err => {

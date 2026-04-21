@@ -45,6 +45,7 @@ class MusicState(BaseModel):
 
     playlist: str | None = Field(None, description="Active playlist folder name, or None if stopped")
     track: str | None = Field(None, description="Current track filename")
+    track_order: list[str] = Field(default_factory=list, description="Ordered track list for this session")
     volume: float = Field(1.0, ge=0.0, le=1.0, description="Master volume for the music channel")
 
 
@@ -87,6 +88,7 @@ class SetMusicRequest(BaseModel):
 
     playlist: str | None = Field(None, description="Playlist folder name, or null to stop music")
     track: str | None = Field(None, description="Track filename to start from")
+    track_order: list[str] = Field(default_factory=list, description="Ordered track list for this session")
     volume: float = Field(1.0, ge=0.0, le=1.0, description="Music channel volume (0.0–1.0)")
 
 
