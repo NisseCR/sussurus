@@ -7,6 +7,7 @@
  *   - Long-polling the server for state updates
  *   - Handing state snapshots to the AudioEngine
  *   - Showing currently playing information
+ *   - Listener-only volume sliders
  */
 
 /** The session code the listener used to join. */
@@ -30,6 +31,18 @@ let pendingInitialState = null;
 /** Whether the listener has already requested audio readiness. */
 let audioReadyPromise = null;
 
+/** Listener-only volume defaults. */
+const VOLUME_STORAGE_KEYS = {
+  music: 'sussurus.listener.volume.music',
+  ambience: 'sussurus.listener.volume.ambience',
+};
+
+/** Local master volume values for this listener. */
+let listenerVolumes = {
+  music: readStoredVolume('music', 1.0),
+  ambience: readStoredVolume('ambience', 1.0),
+};
+
 
 // ---------------------------------------------------------------------------
 // Initialisation
@@ -41,6 +54,96 @@ let audioReadyPromise = null;
  */
 function initListener() {
   setupJoinForm();
+  setupVolumeControls();
+  applyStoredVolumesToUI();
+}
+
+
+// ---------------------------------------------------------------------------
+// Local volume persistence
+// ---------------------------------------------------------------------------
+
+/**
+ * Read a stored listener volume from localStorage.
+ * @param {string} type
+ * @param {number} fallback
+ * @returns {number}
+ */
+function readStoredVolume(type, fallback) {
+  const raw = localStorage.getItem(VOLUME_STORAGE_KEYS[type]);
+  const value = Number(raw);
+  return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : fallback;
+}
+
+/**
+ * Save a listener volume to localStorage.
+ * @param {string} type
+ * @param {number} value
+ */
+function saveStoredVolume(type, value) {
+  localStorage.setItem(VOLUME_STORAGE_KEYS[type], String(value));
+}
+
+/**
+ * Apply stored slider values to the UI.
+ */
+function applyStoredVolumesToUI() {
+  const musicSlider = document.getElementById('music-volume-slider');
+  const ambienceSlider = document.getElementById('ambience-volume-slider');
+
+  if (musicSlider) {
+    musicSlider.value = String(Math.round(listenerVolumes.music * 100));
+  }
+
+  if (ambienceSlider) {
+    ambienceSlider.value = String(Math.round(listenerVolumes.ambience * 100));
+  }
+
+  updateVolumeValueLabels();
+}
+
+/**
+ * Update the percentage labels beside the sliders.
+ */
+function updateVolumeValueLabels() {
+  const musicValue = document.getElementById('music-volume-value');
+  const ambienceValue = document.getElementById('ambience-volume-value');
+
+  if (musicValue) {
+    musicValue.textContent = `${Math.round(listenerVolumes.music * 100)}%`;
+  }
+
+  if (ambienceValue) {
+    ambienceValue.textContent = `${Math.round(listenerVolumes.ambience * 100)}%`;
+  }
+}
+
+/**
+ * Bind the listener volume controls.
+ */
+function setupVolumeControls() {
+  const musicSlider = document.getElementById('music-volume-slider');
+  const ambienceSlider = document.getElementById('ambience-volume-slider');
+
+  if (musicSlider) {
+    musicSlider.addEventListener('input', () => {
+      const value = Number(musicSlider.value) / 100;
+      listenerVolumes.music = value;
+      saveStoredVolume('music', value);
+      updateVolumeValueLabels();
+      AudioEngine.setListenerVolume('music', value);
+    });
+  }
+
+  if (ambienceSlider) {
+    ambienceSlider.addEventListener('input', () => {
+      const value = Number(ambienceSlider.value) / 100;
+      listenerVolumes.ambience = value;
+      saveStoredVolume('ambience', value);
+      updateVolumeValueLabels();
+      AudioEngine.setListenerVolume('ambience', value);
+    });
+  }
 }
 
 
@@ -101,6 +204,7 @@ function transitionToPlayer(state) {
 
   pendingInitialState = state;
   AudioEngine.init();
+
   ensureAudioReady()
     .then(() => {
       if (pendingInitialState) {
@@ -110,6 +214,10 @@ function transitionToPlayer(state) {
     .then(() => {
       pendingInitialState = null;
       audioStarted = true;
+
+      // Re-apply listener-local volume after first engine state is active.
+      AudioEngine.setListenerVolume('music', listenerVolumes.music);
+      AudioEngine.setListenerVolume('ambience', listenerVolumes.ambience);
     });
 
   updateNowPlaying(state);
@@ -186,6 +294,10 @@ async function poll() {
         updateNowPlaying(state);
         await ensureAudioReady();
         await enqueueAudioState(state);
+
+        // Keep local master volumes applied after every server update.
+        AudioEngine.setListenerVolume('music', listenerVolumes.music);
+        AudioEngine.setListenerVolume('ambience', listenerVolumes.ambience);
       }
     }
   } catch (err) {
@@ -245,6 +357,7 @@ function updateNowPlaying(state) {
 function showDisconnected(message) {
   const el = document.getElementById('player-screen');
   if (!el) return;
+
   const notice = document.createElement('p');
   notice.className = 'disconnect-notice';
   notice.textContent = message;

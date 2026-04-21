@@ -11,6 +11,7 @@
  *   AudioEngine.applyState(state)   ← main entry point, call on every state update
  *   AudioEngine.setMusicVolume(v)
  *   AudioEngine.setAmbienceVolume(key, v)
+ *   AudioEngine.setListenerVolume(type, v)
  *   AudioEngine.stopAll()
  */
 
@@ -50,8 +51,23 @@ const AudioEngine = (() => {
   /** Library snapshot: playlists & tracks loaded on init. */
   let library = { playlists: [], ambience: {} };
 
+  /** Local listener-only master multipliers. */
+  const listenerVolume = { music: 1.0, ambience: 1.0 };
+
   /** Small tolerance for comparing volume values. */
   const VOLUME_EPSILON = 0.0005;
+
+  function clampVolume(value) {
+    return Math.min(1, Math.max(0, Number(value) || 0));
+  }
+
+  function effectiveMusicVolume(serverVolume) {
+    return clampVolume(serverVolume) * listenerVolume.music;
+  }
+
+  function effectiveAmbienceVolume(serverVolume) {
+    return clampVolume(serverVolume) * listenerVolume.ambience;
+  }
 
 
   // ---------------------------------------------------------------------------
@@ -270,7 +286,7 @@ const AudioEngine = (() => {
     }
 
     await startTrack(playlistName, trackIndex, gainNode, order);
-    fadeIn(gainNode, targetVolume, fadeDur);
+    fadeIn(gainNode, effectiveMusicVolume(targetVolume), fadeDur);
   }
 
 
@@ -299,7 +315,7 @@ const AudioEngine = (() => {
     source.start(0);
 
     ambienceLayers.set(key, { source, gain: gainNode, targetVolume });
-    fadeIn(gainNode, targetVolume, fade.ambience);
+    fadeIn(gainNode, effectiveAmbienceVolume(targetVolume), fade.ambience);
   }
 
   /**
@@ -355,7 +371,7 @@ const AudioEngine = (() => {
     } else if (music.gain) {
       // Same playlist still playing — only ramp if the requested volume changed
       if (!nearlyEqual(music.targetVolume, desiredVolume)) {
-        rampVolume(music.gain, desiredVolume);
+        rampVolume(music.gain, effectiveMusicVolume(desiredVolume));
         music.targetVolume = desiredVolume;
       }
     } else if (desiredPlaylist) {
@@ -382,7 +398,7 @@ const AudioEngine = (() => {
         // Already playing — only ramp if the requested volume changed
         const layer = ambienceLayers.get(key);
         if (!nearlyEqual(layer.targetVolume, layerState.volume)) {
-          rampVolume(layer.gain, layerState.volume);
+          rampVolume(layer.gain, effectiveAmbienceVolume(layerState.volume));
           layer.targetVolume = layerState.volume;
         }
       } else {
@@ -394,7 +410,7 @@ const AudioEngine = (() => {
 
 
   // ---------------------------------------------------------------------------
-  // Volume controls (for GM sidebar sliders)
+  // Volume controls
   // ---------------------------------------------------------------------------
 
   /**
@@ -402,7 +418,10 @@ const AudioEngine = (() => {
    * @param {number} volume - 0.0–1.0
    */
   function setMusicVolume(volume) {
-    if (music.gain) rampVolume(music.gain, volume);
+    listenerVolume.music = clampVolume(volume);
+    if (music.gain) {
+      rampVolume(music.gain, effectiveMusicVolume(music.targetVolume));
+    }
   }
 
   /**
@@ -413,8 +432,29 @@ const AudioEngine = (() => {
   function setAmbienceVolume(key, volume) {
     const layer = ambienceLayers.get(key);
     if (layer) {
-      rampVolume(layer.gain, volume);
-      layer.targetVolume = volume;
+      rampVolume(layer.gain, effectiveAmbienceVolume(layer.targetVolume));
+    }
+  }
+
+  /**
+   * Apply a listener-only master volume.
+   * @param {'music'|'ambience'} type
+   * @param {number} volume
+   */
+  function setListenerVolume(type, volume) {
+    if (type === 'music') {
+      listenerVolume.music = clampVolume(volume);
+      if (music.gain) {
+        rampVolume(music.gain, effectiveMusicVolume(music.targetVolume));
+      }
+      return;
+    }
+
+    if (type === 'ambience') {
+      listenerVolume.ambience = clampVolume(volume);
+      for (const layer of ambienceLayers.values()) {
+        rampVolume(layer.gain, effectiveAmbienceVolume(layer.targetVolume));
+      }
     }
   }
 
@@ -441,6 +481,6 @@ const AudioEngine = (() => {
   // ---------------------------------------------------------------------------
   // Public interface
   // ---------------------------------------------------------------------------
-  return { init, loadLibrary, applyState, setMusicVolume, setAmbienceVolume, stopAll };
+  return { init, loadLibrary, applyState, setMusicVolume, setAmbienceVolume, setListenerVolume, stopAll };
 
 })();
