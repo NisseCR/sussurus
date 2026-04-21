@@ -168,6 +168,7 @@
   color: var(--text-secondary);
   font-style: italic;
   line-height: 1.6;
+  white-space: pre-line;
 }
 
 .listener-volume-divider {

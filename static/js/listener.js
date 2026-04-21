@@ -43,6 +43,17 @@ let listenerVolumes = {
   ambience: readStoredVolume('ambience', 1.0),
 };
 
+/**
+ * Convert a title to proper capitalized words.
+ * @param {string} value
+ * @returns {string}
+ */
+function toTitleCase(value) {
+  return String(value)
+    .toLowerCase()
+    .replace(/\b\w/g, letter => letter.toUpperCase());
+}
+
 
 // ---------------------------------------------------------------------------
 // Initialisation
@@ -330,7 +341,7 @@ function updateNowPlaying(state) {
 
   if (musicEl) {
     musicEl.textContent = state.music?.playlist
-      ? `♪ ${state.music.playlist}`
+      ? `♪ ${toTitleCase(state.music.playlist)}`
       : 'No music';
   }
 
@@ -338,7 +349,7 @@ function updateNowPlaying(state) {
     const active = Object.entries(state.ambience ?? {})
       .filter(([, v]) => v.active)
       .map(([k]) => k.replace(/\.[^.]+$/, '').replace('/', ' · '));
-    ambienceEl.textContent = active.length ? active.join('  •  ') : 'No ambience';
+    ambienceEl.textContent = active.length ? active.join('\n') : 'No ambience';
   }
 }
 
@@ -360,7 +371,7 @@ function showDisconnected(message) {
 document.addEventListener('trackChanged', (e) => {
   const el = document.getElementById('now-playing-music');
   if (el && e.detail.playlist) {
-    el.textContent = `♪ ${e.detail.playlist} — ${e.detail.track.replace(/\.[^.]+$/, '')}`;
+    el.textContent = `♪ ${toTitleCase(e.detail.playlist)} — ${toTitleCase(e.detail.track.replace(/\.[^.]+$/, ''))}`;
   }
 });
 
