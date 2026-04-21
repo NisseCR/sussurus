@@ -92,11 +92,11 @@ function applyStoredVolumesToUI() {
   const ambienceSlider = document.getElementById('ambience-volume-slider');
 
   if (musicSlider) {
-    musicSlider.value = String(Math.round(listenerVolumes.music * 100));
+    musicSlider.value = String(listenerVolumes.music);
   }
 
   if (ambienceSlider) {
-    ambienceSlider.value = String(Math.round(listenerVolumes.ambience * 100));
+    ambienceSlider.value = String(listenerVolumes.ambience);
   }
 
   updateVolumeValueLabels();
@@ -127,7 +127,7 @@ function setupVolumeControls() {
 
   if (musicSlider) {
     musicSlider.addEventListener('input', () => {
-      const value = Number(musicSlider.value) / 100;
+      const value = Number(musicSlider.value);
       listenerVolumes.music = value;
       saveStoredVolume('music', value);
       updateVolumeValueLabels();
@@ -137,7 +137,7 @@ function setupVolumeControls() {
 
   if (ambienceSlider) {
     ambienceSlider.addEventListener('input', () => {
-      const value = Number(ambienceSlider.value) / 100;
+      const value = Number(ambienceSlider.value);
       listenerVolumes.ambience = value;
       saveStoredVolume('ambience', value);
       updateVolumeValueLabels();
